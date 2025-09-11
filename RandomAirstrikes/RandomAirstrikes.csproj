@@ -2,9 +2,12 @@
 
   <PropertyGroup>
     <TargetFramework>net471</TargetFramework>
+	
+	<AssemblyTitle>RandomAirstrikes</AssemblyTitle>
     <AssemblyName>RandomAirstrikes</AssemblyName>
+    <Version>1.0.3</Version>
+	
     <Product>RandomAirstrikes</Product>
-    <Version>1.0.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
     <RestoreAdditionalProjectSources>
@@ -17,194 +20,34 @@
 
   <ItemGroup>
     <PackageReference Include="BepInEx.Analyzers" Version="1.*" PrivateAssets="all" />
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.3" PrivateAssets="all" />
     <PackageReference Include="BepInEx.Core" Version="5.*" />
     <PackageReference Include="BepInEx.PluginInfoProps" Version="2.*" />
+    <PackageReference Include="Hamunii.BepInEx.AutoPlugin" Version="2.0.*" PrivateAssets="all" />
   </ItemGroup>
   
   <ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all" />
   </ItemGroup>
   
+  <ItemGroup Condition="Exists('$(ManagedDir)')">
+    <LocalReferences Include="$(ManagedDir)*.dll" Exclude="$(ManagedDir)Mono*.dll;$(ManagedDir)netstandard.dll;$(ManagedDir)System*.dll;$(ManagedDir)mscorlib.dll" />
+    <Reference Include="@(LocalReferences)" Private="false" />
+    <Reference Include="$(ManagedDir)Assembly-CSharp.dll" Private="false" Publicize="true" />
+  </ItemGroup>
+    <Target Name="PackTS" DependsOnTargets="Build" Condition="$(ThunderstorePackable) != 'false'">
+    <Error Text=" PackTS must be called with Release configuration." Condition="'$(Configuration)' != 'Release'" />
+    <PropertyGroup>
+      <BuildArgument Condition="'$(PublishTS)' != 'true'">build</BuildArgument>
+      <BuildArgument Condition="'$(PublishTS)' == 'true'">publish</BuildArgument>
+    </PropertyGroup>
+    <!--<Exec Command="dotnet tool restore" />-->
+    <Exec Command="tcli $(BuildArgument) --package-version $(Version) --token $(TS_AUTH)" />
+  </Target>
+  
+  <Import Project="Config.Build.user.props" />
   <ItemGroup>
-    <Reference Include="Ashley.MeshSplitter"></Reference>
-    <Reference Include="Assembly-CSharp"></Reference>
-    <Reference Include="Assembly-CSharp-firstpass"></Reference>
-    <Reference Include="com.rlabrecque.steamworks.net"></Reference>
-    <Reference Include="DemiLib"></Reference>
-    <Reference Include="DOTween"></Reference>
-    <Reference Include="DOTweenPro"></Reference>
-    <Reference Include="HBAO.Runtime"></Reference>
-    <Reference Include="HBAO.Universal.Runtime"></Reference>
-    <Reference Include="Mono.Security"></Reference>
-    <Reference Include="netstandard"></Reference>
-    <Reference Include="Newtonsoft.Json"></Reference>
-    <Reference Include="Photon3Unity3D"></Reference>
-    <Reference Include="PhotonChat"></Reference>
-    <Reference Include="PhotonRealtime"></Reference>
-    <Reference Include="PhotonUnityNetworking"></Reference>
-    <Reference Include="PhotonUnityNetworking.Demos"></Reference>
-    <Reference Include="PhotonUnityNetworking.Utilities"></Reference>
-    <Reference Include="PhotonVoice"></Reference>
-    <Reference Include="PhotonVoice.API"></Reference>
-    <Reference Include="PhotonVoice.PUN"></Reference>
-    <Reference Include="pworld"></Reference>
-    <Reference Include="sc.posteffects.runtime"></Reference>
-    <Reference Include="Sirenix.OdinInspector.Attributes"></Reference>
-    <Reference Include="Sirenix.OdinInspector.Modules.Unity.Addressables"></Reference>
-    <Reference Include="Sirenix.OdinInspector.Modules.UnityLocalization"></Reference>
-    <Reference Include="Sirenix.Serialization"></Reference>
-    <Reference Include="Sirenix.Serialization.Config"></Reference>
-    <Reference Include="Sirenix.Utilities"></Reference>
-    <Reference Include="System.ComponentModel.Composition"></Reference>
-    <Reference Include="System.Configuration"></Reference>
-    <Reference Include="System.Data.DataSetExtensions"></Reference>
-    <Reference Include="System.EnterpriseServices"></Reference>
-    <Reference Include="System.IO.Compression"></Reference>
-    <Reference Include="System.Net.Http"></Reference>
-    <Reference Include="System.Runtime"></Reference>
-    <Reference Include="System.Security"></Reference>
-    <Reference Include="System.ServiceModel.Internals"></Reference>
-    <Reference Include="System.Transactions"></Reference>
-    <Reference Include="Tayx.Graphy"></Reference>
-    <Reference Include="unity-websocket-sharp"></Reference>
-    <Reference Include="Unity.Addressables"></Reference>
-    <Reference Include="Unity.AI.Navigation"></Reference>
-    <Reference Include="Unity.Animation.Rigging"></Reference>
-    <Reference Include="Unity.Animation.Rigging.DocCodeExamples"></Reference>
-    <Reference Include="Unity.Burst"></Reference>
-    <Reference Include="Unity.Burst.Unsafe"></Reference>
-    <Reference Include="Unity.Collections"></Reference>
-    <Reference Include="Unity.Collections.LowLevel.ILSupport"></Reference>
-    <Reference Include="Unity.InputSystem"></Reference>
-    <Reference Include="Unity.InputSystem.ForUI"></Reference>
-    <Reference Include="Unity.InternalAPIEngineBridge.013"></Reference>
-    <Reference Include="Unity.Localization"></Reference>
-    <Reference Include="Unity.Mathematics"></Reference>
-    <Reference Include="Unity.MemoryProfiler"></Reference>
-    <Reference Include="Unity.Multiplayer.Center.Common"></Reference>
-    <Reference Include="Unity.Multiplayer.Playmode"></Reference>
-    <Reference Include="Unity.Multiplayer.Playmode.Common.Runtime"></Reference>
-    <Reference Include="Unity.Networking.Transport"></Reference>
-    <Reference Include="Unity.Profiling.Core"></Reference>
-    <Reference Include="Unity.Rendering.LightTransport.Runtime"></Reference>
-    <Reference Include="Unity.RenderPipeline.Universal.ShaderLibrary"></Reference>
-    <Reference Include="Unity.RenderPipelines.Core.Runtime"></Reference>
-    <Reference Include="Unity.RenderPipelines.Core.Runtime.Shared"></Reference>
-    <Reference Include="Unity.RenderPipelines.Core.ShaderLibrary"></Reference>
-    <Reference Include="Unity.RenderPipelines.GPUDriven.Runtime"></Reference>
-    <Reference Include="Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary"></Reference>
-    <Reference Include="Unity.RenderPipelines.Universal.2D.Runtime"></Reference>
-    <Reference Include="Unity.RenderPipelines.Universal.Config.Runtime"></Reference>
-    <Reference Include="Unity.RenderPipelines.Universal.Runtime"></Reference>
-    <Reference Include="Unity.RenderPipelines.Universal.Shaders"></Reference>
-    <Reference Include="Unity.ResourceManager"></Reference>
-    <Reference Include="Unity.ScriptableBuildPipeline"></Reference>
-    <Reference Include="Unity.Services.Authentication"></Reference>
-    <Reference Include="Unity.Services.Authentication.PlayerAccounts"></Reference>
-    <Reference Include="Unity.Services.Core"></Reference>
-    <Reference Include="Unity.Services.Core.Analytics"></Reference>
-    <Reference Include="Unity.Services.Core.Components"></Reference>
-    <Reference Include="Unity.Services.Core.Configuration"></Reference>
-    <Reference Include="Unity.Services.Core.Device"></Reference>
-    <Reference Include="Unity.Services.Core.Environments"></Reference>
-    <Reference Include="Unity.Services.Core.Environments.Internal"></Reference>
-    <Reference Include="Unity.Services.Core.Internal"></Reference>
-    <Reference Include="Unity.Services.Core.Networking"></Reference>
-    <Reference Include="Unity.Services.Core.Registration"></Reference>
-    <Reference Include="Unity.Services.Core.Scheduler"></Reference>
-    <Reference Include="Unity.Services.Core.Telemetry"></Reference>
-    <Reference Include="Unity.Services.Core.Threading"></Reference>
-    <Reference Include="Unity.Services.Multiplayer"></Reference>
-    <Reference Include="Unity.Services.QoS"></Reference>
-    <Reference Include="Unity.Services.Wire.Internal"></Reference>
-    <Reference Include="Unity.Splines"></Reference>
-    <Reference Include="Unity.TextMeshPro"></Reference>
-    <Reference Include="Unity.Timeline"></Reference>
-    <Reference Include="Unity.VisualEffectGraph.Runtime"></Reference>
-    <Reference Include="UnityEngine"></Reference>
-    <Reference Include="UnityEngine.AccessibilityModule"></Reference>
-    <Reference Include="UnityEngine.AIModule"></Reference>
-    <Reference Include="UnityEngine.AMDModule"></Reference>
-    <Reference Include="UnityEngine.AndroidJNIModule"></Reference>
-    <Reference Include="UnityEngine.AnimationModule"></Reference>
-    <Reference Include="UnityEngine.ARModule"></Reference>
-    <Reference Include="UnityEngine.AssetBundleModule"></Reference>
-    <Reference Include="UnityEngine.AudioModule"></Reference>
-    <Reference Include="UnityEngine.ClothModule"></Reference>
-    <Reference Include="UnityEngine.ClusterInputModule"></Reference>
-    <Reference Include="UnityEngine.ClusterRendererModule"></Reference>
-    <Reference Include="UnityEngine.ContentLoadModule"></Reference>
-    <Reference Include="UnityEngine.CoreModule"></Reference>
-    <Reference Include="UnityEngine.CrashReportingModule"></Reference>
-    <Reference Include="UnityEngine.DirectorModule"></Reference>
-    <Reference Include="UnityEngine.DSPGraphModule"></Reference>
-    <Reference Include="UnityEngine.GameCenterModule"></Reference>
-    <Reference Include="UnityEngine.GIModule"></Reference>
-    <Reference Include="UnityEngine.GraphicsStateCollectionSerializerModule"></Reference>
-    <Reference Include="UnityEngine.GridModule"></Reference>
-    <Reference Include="UnityEngine.HierarchyCoreModule"></Reference>
-    <Reference Include="UnityEngine.HotReloadModule"></Reference>
-    <Reference Include="UnityEngine.ImageConversionModule"></Reference>
-    <Reference Include="UnityEngine.IMGUIModule"></Reference>
-    <Reference Include="UnityEngine.InputForUIModule"></Reference>
-    <Reference Include="UnityEngine.InputLegacyModule"></Reference>
-    <Reference Include="UnityEngine.InputModule"></Reference>
-    <Reference Include="UnityEngine.JSONSerializeModule"></Reference>
-    <Reference Include="UnityEngine.LocalizationModule"></Reference>
-    <Reference Include="UnityEngine.MarshallingModule"></Reference>
-    <Reference Include="UnityEngine.MultiplayerModule"></Reference>
-    <Reference Include="UnityEngine.NVIDIAModule"></Reference>
-    <Reference Include="UnityEngine.ParticleSystemModule"></Reference>
-    <Reference Include="UnityEngine.PerformanceReportingModule"></Reference>
-    <Reference Include="UnityEngine.Physics2DModule"></Reference>
-    <Reference Include="UnityEngine.PhysicsModule"></Reference>
-    <Reference Include="UnityEngine.PropertiesModule"></Reference>
-    <Reference Include="UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule"></Reference>
-    <Reference Include="UnityEngine.ScreenCaptureModule"></Reference>
-    <Reference Include="UnityEngine.ShaderVariantAnalyticsModule"></Reference>
-    <Reference Include="UnityEngine.SharedInternalsModule"></Reference>
-    <Reference Include="UnityEngine.SpriteMaskModule"></Reference>
-    <Reference Include="UnityEngine.SpriteShapeModule"></Reference>
-    <Reference Include="UnityEngine.StreamingModule"></Reference>
-    <Reference Include="UnityEngine.SubstanceModule"></Reference>
-    <Reference Include="UnityEngine.SubsystemsModule"></Reference>
-    <Reference Include="UnityEngine.TerrainModule"></Reference>
-    <Reference Include="UnityEngine.TerrainPhysicsModule"></Reference>
-    <Reference Include="UnityEngine.TextCoreFontEngineModule"></Reference>
-    <Reference Include="UnityEngine.TextCoreTextEngineModule"></Reference>
-    <Reference Include="UnityEngine.TextRenderingModule"></Reference>
-    <Reference Include="UnityEngine.TilemapModule"></Reference>
-    <Reference Include="UnityEngine.TLSModule"></Reference>
-    <Reference Include="UnityEngine.UI"></Reference>
-    <Reference Include="UnityEngine.UIElementsModule"></Reference>
-    <Reference Include="UnityEngine.UIModule"></Reference>
-    <Reference Include="UnityEngine.UmbraModule"></Reference>
-    <Reference Include="UnityEngine.UnityAnalyticsCommonModule"></Reference>
-    <Reference Include="UnityEngine.UnityAnalyticsModule"></Reference>
-    <Reference Include="UnityEngine.UnityConnectModule"></Reference>
-    <Reference Include="UnityEngine.UnityCurlModule"></Reference>
-    <Reference Include="UnityEngine.UnityTestProtocolModule"></Reference>
-    <Reference Include="UnityEngine.UnityWebRequestAssetBundleModule"></Reference>
-    <Reference Include="UnityEngine.UnityWebRequestAudioModule"></Reference>
-    <Reference Include="UnityEngine.UnityWebRequestModule"></Reference>
-    <Reference Include="UnityEngine.UnityWebRequestTextureModule"></Reference>
-    <Reference Include="UnityEngine.UnityWebRequestWWWModule"></Reference>
-    <Reference Include="UnityEngine.VehiclesModule"></Reference>
-    <Reference Include="UnityEngine.VFXModule"></Reference>
-    <Reference Include="UnityEngine.VideoModule"></Reference>
-    <Reference Include="UnityEngine.VirtualTexturingModule"></Reference>
-    <Reference Include="UnityEngine.VRModule"></Reference>
-    <Reference Include="UnityEngine.WindModule"></Reference>
-    <Reference Include="UnityEngine.XRModule"></Reference>
-    <Reference Include="UnityUIExtensions"></Reference>
-    <Reference Include="websocket-sharp"></Reference>
-    <Reference Include="Whinarn.UnityMeshSimplifier.Runtime"></Reference>
-    <Reference Include="Zorro.AutoLOD"></Reference>
-    <Reference Include="Zorro.ControllerSupport"></Reference>
-    <Reference Include="Zorro.Core.Runtime"></Reference>
-    <Reference Include="Zorro.JiggleBones"></Reference>
-    <Reference Include="Zorro.PhotonUtility"></Reference>
-    <Reference Include="Zorro.Settings.Runtime"></Reference>
-    <Reference Include="Zorro.UI.Runtime"></Reference>
+    <None Include="../README.md" Pack="true" PackagePath="/" />
+    <None Include="assets/icon.png" Pack="true" PackagePath="/" />
   </ItemGroup>
 </Project>

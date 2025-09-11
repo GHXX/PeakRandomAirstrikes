@@ -3,14 +3,15 @@ using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
 using Photon.Pun;
-using System.Reflection;
+using System.Linq;
 using UnityEngine;
+using Zorro.Core;
 using Logger = UnityEngine.Logger;
 
 namespace RandomAirstrikes;
 
-[BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
-internal class Plugin : BaseUnityPlugin {
+[BepInAutoPlugin]
+internal partial class Plugin : BaseUnityPlugin {
     internal static new ManualLogSource Logger;
     public bool IsNetHost => PhotonNetwork.IsMasterClient;
 
@@ -38,8 +39,8 @@ internal class Plugin : BaseUnityPlugin {
         Logger.LogInfo($"Initted");
     }
 
-    private static readonly MethodInfo itemForceSyncForFrame = typeof(Item).GetMethod("ForceSyncForFrames", BindingFlags.NonPublic | BindingFlags.Instance);
-    private static void ForceSyncForFrames(Item i, int frames = 10) => itemForceSyncForFrame.Invoke(i, [frames]);
+    //private static readonly MethodInfo itemForceSyncForFrame = typeof(Item).GetMethod("ForceSyncForFrames", BindingFlags.NonPublic | BindingFlags.Instance);
+    private static void ForceSyncForFrames(Item i, int frames = 10) => i.ForceSyncForFrames(frames); // itemForceSyncForFrame.Invoke(i, [frames]);
 
     private float secondsTillNextDrop = 0;
     private Vector3 lastPos = Vector3.zero;
@@ -60,6 +61,7 @@ internal class Plugin : BaseUnityPlugin {
             if (playerVelocity.sqrMagnitude > 0.01) {
                 playerDirection = playerVelocity.normalized;
             }
+            Logger.LogWarning($"Current biome: {progressHandler.progressPoints[progressHandler.maxProgressPointReached].biome.ToString()}");
             AirstrikeAtPlayerPosition(currPos + playerVelocity + Vector3.up * 20, playerDirection);
 
             this.airstrikeTarget = null;
