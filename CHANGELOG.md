@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.5
+Stagger dynamite spawning
+Disable targeting dead players
+
 ## 0.0.4
 Cleaned up some logging
 

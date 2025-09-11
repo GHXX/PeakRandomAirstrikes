@@ -3,10 +3,13 @@ using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
 using Photon.Pun;
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Zorro.Core;
 using Logger = UnityEngine.Logger;
+using Random = UnityEngine.Random;
 
 namespace RandomAirstrikes;
 
@@ -16,13 +19,16 @@ internal partial class Plugin : BaseUnityPlugin {
     public bool IsNetHost => PhotonNetwork.IsMasterClient;
 
     // fix an issue that causes people to break when the mod is uninstalled after beating an ascent higher than 7
-    internal static ConfigEntry<int> meanSecondsBetweenStrikes;
-    private int SecondsBetweenStrikes => meanSecondsBetweenStrikes.Value;
+    internal static ConfigEntry<int> meanSecondsBetweenStrikesCfg;
+    internal static ConfigEntry<float> QueueProcessFrameDelaySecondsCfg;
+    private int SecondsBetweenStrikes => meanSecondsBetweenStrikesCfg.Value;
+    private float QueueProcessFrameDelaySeconds => QueueProcessFrameDelaySecondsCfg.Value;
 
     internal void Awake() {
         Logger = base.Logger;
 
-        meanSecondsBetweenStrikes = Config.Bind("General", "MeanTimeBetweenStrikesInSeconds", 15, "");
+        meanSecondsBetweenStrikesCfg = Config.Bind("General", "MeanTimeBetweenStrikesInSeconds", 15, "");
+        QueueProcessFrameDelaySecondsCfg = Config.Bind("General", "DynamiteSpawnDelayInSeconds", 0.05f, "");
 
         this.secondsTillNextDrop = SecondsBetweenStrikes;
 
@@ -49,16 +55,24 @@ internal partial class Plugin : BaseUnityPlugin {
     private const float airstrikePlayerVelocityEstimationTime = 1;
     private const float airstrikeDropDistance = 2;
 
+    private Queue<Action> SpawnQueue = new();
+    private float queueProcessCountdownSeconds = 0;
     internal void Update() {
         if (!IsNetHost) return;
-        var charData = Character.localCharacter?.data;
-        if (charData == null || charData.passedOutOnTheBeach > 0) return;
+        var dt = Time.deltaTime;
 
-        var progressHandler = Singleton<MountainProgressHandler>.Instance;        
+        var charData = Character.localCharacter?.data;
+        if (charData == null || charData.passedOutOnTheBeach > 0) { this.SpawnQueue.Clear(); return; }
+        if (this.SpawnQueue.Count > 0 && (this.queueProcessCountdownSeconds -= dt) <= 0) {
+            this.SpawnQueue.Dequeue().Invoke();
+            this.queueProcessCountdownSeconds = QueueProcessFrameDelaySeconds;
+        }
+
+        var progressHandler = Singleton<MountainProgressHandler>.Instance;
         if (progressHandler == null || progressHandler.progressPoints.Single(x => x.biome == Biome.BiomeType.Peak).Reached) return;
 
-        this.secondsTillNextDrop -= Time.deltaTime;
-        if (this.airstrikeTarget != null && (this.timeTillAirstrike -= Time.deltaTime) < 0) {
+        this.secondsTillNextDrop -= dt;
+        if (this.airstrikeTarget != null && (this.timeTillAirstrike -= dt) < 0) {
             var currPos = this.airstrikeTarget.Center;
             Vector3 playerVelocity = (currPos - this.lastPos) / airstrikePlayerVelocityEstimationTime;
             playerVelocity.y = 0;
@@ -75,7 +89,7 @@ internal partial class Plugin : BaseUnityPlugin {
         if (this.secondsTillNextDrop > 0) { return; }
         this.secondsTillNextDrop = SecondsBetweenStrikes;
 
-        var chars = Character.AllCharacters.ToArray();
+        var chars = Character.AllCharacters.Where(x => !x.data.dead).ToArray();
         if (chars.Length == 0) { return; }
         var targetChar = chars[Random.Range(0, chars.Length)];
         // IF HOST
@@ -96,21 +110,23 @@ internal partial class Plugin : BaseUnityPlugin {
     }
 
     private void DropLitDynamiteAtStartPosition(Vector3 pos) {
-        GameObject component = PhotonNetwork.InstantiateItemRoom("Dynamite", pos, Quaternion.Euler(Vector3.up)); // +10 feels fine when dropped onto player
-        Item spawnedItem = component.GetComponent<Item>();
-        var dynamite = spawnedItem.GetComponentInParent<Dynamite>();
-        dynamite.startingFuseTime = 15;
+        this.SpawnQueue.Enqueue(() => {
+            GameObject component = PhotonNetwork.InstantiateItemRoom("Dynamite", pos, Quaternion.Euler(Vector3.up)); // +10 feels fine when dropped onto player
+            Item spawnedItem = component.GetComponent<Item>();
+            var dynamite = spawnedItem.GetComponentInParent<Dynamite>();
+            dynamite.startingFuseTime = 15;
 
-        GlobalEvents.TriggerItemThrown(spawnedItem);
-        ForceSyncForFrames(spawnedItem);
-        var r = component.GetComponent<Rigidbody>();
-        //r.constraints &= RigidbodyConstraints.None;
-        r.isKinematic = false;
-        r.angularVelocity = Vector3.up * 15;
-        r.AddForce(Vector3.down * 5);
-        //r.useGravity = true;
-        component.GetComponent<PhotonView>().RPC("SetItemInstanceDataRPC", RpcTarget.All, spawnedItem.data);
-        component.GetComponent<PhotonView>().RPC("SetKinematicRPC", RpcTarget.AllBuffered, false, spawnedItem.transform.position, spawnedItem.transform.rotation);
-        dynamite.LightFlare();
+            GlobalEvents.TriggerItemThrown(spawnedItem);
+            ForceSyncForFrames(spawnedItem);
+            var r = component.GetComponent<Rigidbody>();
+            //r.constraints &= RigidbodyConstraints.None;
+            r.isKinematic = false;
+            r.angularVelocity = Vector3.up * 15;
+            r.AddForce(Vector3.down * 5);
+            //r.useGravity = true;
+            component.GetComponent<PhotonView>().RPC("SetItemInstanceDataRPC", RpcTarget.All, spawnedItem.data);
+            component.GetComponent<PhotonView>().RPC("SetKinematicRPC", RpcTarget.AllBuffered, false, spawnedItem.transform.position, spawnedItem.transform.rotation);
+            dynamite.LightFlare();
+        });
     }
 }
