@@ -1,3 +1,5 @@
+![](RandomAirstrikes/assets/icon.png)
+
 # PEAK Random Airstrikes
 
 Adds airstrikes to the game that target a random player!
