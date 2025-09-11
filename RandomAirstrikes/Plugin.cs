@@ -51,6 +51,11 @@ internal partial class Plugin : BaseUnityPlugin {
 
     internal void Update() {
         if (!IsNetHost) return;
+        var charData = Character.localCharacter?.data;
+        if (charData == null || charData.passedOutOnTheBeach > 0) return;
+
+        var progressHandler = Singleton<MountainProgressHandler>.Instance;        
+        if (progressHandler == null || progressHandler.progressPoints.Single(x => x.biome == Biome.BiomeType.Peak).Reached) return;
 
         this.secondsTillNextDrop -= Time.deltaTime;
         if (this.airstrikeTarget != null && (this.timeTillAirstrike -= Time.deltaTime) < 0) {
