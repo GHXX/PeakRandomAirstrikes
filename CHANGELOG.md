@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.0.4
+Cleaned up some logging
+
 ## 0.0.3
 Dynamite no longer is spawned in the airport and while waking up at the beach.
 

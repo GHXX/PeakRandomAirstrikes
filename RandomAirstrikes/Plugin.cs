@@ -66,7 +66,7 @@ internal partial class Plugin : BaseUnityPlugin {
             if (playerVelocity.sqrMagnitude > 0.01) {
                 playerDirection = playerVelocity.normalized;
             }
-            Logger.LogWarning($"Current biome: {progressHandler.progressPoints[progressHandler.maxProgressPointReached].biome.ToString()}");
+            //Logger.LogWarning($"Current biome: {progressHandler.progressPoints[progressHandler.maxProgressPointReached].biome.ToString()}");
             AirstrikeAtPlayerPosition(currPos + playerVelocity + Vector3.up * 20, playerDirection);
 
             this.airstrikeTarget = null;
