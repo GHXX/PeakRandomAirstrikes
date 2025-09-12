@@ -24,12 +24,14 @@ internal partial class Plugin : BaseUnityPlugin {
     internal static ConfigEntry<float> QueueProcessFrameDelaySecondsCfg;
     internal static ConfigEntry<float> AirstrikeDropDistanceCfg;
     internal static ConfigEntry<float> AirstrikeFuseDurationCfg;
+    internal static ConfigEntry<bool> ReduceExplosionCloudDensityCfg;
     private float MeanSecondsBetweenStrikes => meanSecondsBetweenStrikesCfg.Value;
     private float RangeSecondsBetweenStrikes => rangeSecondsBetweenStrikesCfg.Value;
     private float QueueProcessFrameDelaySeconds => QueueProcessFrameDelaySecondsCfg.Value;
     private float GetNextStrikeDelay() => Random.Range(MeanSecondsBetweenStrikes - RangeSecondsBetweenStrikes, MeanSecondsBetweenStrikes + RangeSecondsBetweenStrikes);
     private float AirstrikeDropDistance => AirstrikeDropDistanceCfg.Value;
     private float AirstrikeFuseDuration => AirstrikeFuseDurationCfg.Value;
+    private static bool ReduceExplosionCloudDensity => ReduceExplosionCloudDensityCfg.Value;
 
     internal void Awake() {
         Logger = base.Logger;
@@ -48,9 +50,14 @@ internal partial class Plugin : BaseUnityPlugin {
         AirstrikeDropDistanceCfg = Config.Bind("General", "AirstrikeDropDistance", 2f, "Distance in meters between the individual pieces of dynamite in the drop-line");
         AirstrikeFuseDurationCfg = Config.Bind("General", "AirstrikeFuseDuration", 15f, "The fuse of the dynamite when it starts dropping");
 
+        ReduceExplosionCloudDensityCfg = Config.Bind("Performance", "ReduceExplosionCloudDensity", true,
+            "Decreases the amount of explosion cloud objects spawned (by PEAK) per explosion to 1 instead of 13. This affects ALL dynamite explosions but " +
+            "massively helps performance. Set to 'false' for vanilla behaviour.");
+
         this.secondsTillNextDrop = MeanSecondsBetweenStrikes;
 
         Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
+
         Harmony harmony = new(MyPluginInfo.PLUGIN_GUID);
         harmony.PatchAll();
     }
@@ -126,12 +133,23 @@ internal partial class Plugin : BaseUnityPlugin {
         }
     }
 
+    private static void DisableShadowsOnGameObject(GameObject obj) {
+        foreach (var c in obj.GetComponentsInChildren<Renderer>()) {
+            //Logger.LogWarning($"{c.name} {c.GetType().FullName.ToString()} mode was: {c.shadowCastingMode.ToString()}");
+            c.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+    }
+
     private void DropLitDynamiteAtStartPosition(Vector3 pos) {
         this.SpawnQueue.Enqueue(() => {
             GameObject component = PhotonNetwork.InstantiateItemRoom("Dynamite", pos, Quaternion.Euler(Vector3.up)); // +10 feels fine when dropped onto player
+            DisableShadowsOnGameObject(component);
             Item spawnedItem = component.GetComponent<Item>();
             var dynamite = spawnedItem.GetComponentInParent<Dynamite>();
             dynamite.startingFuseTime = AirstrikeFuseDuration;
+            //DisableShadowsOnGameObject(dynamite.explosionPrefab);
+
+            //Logger.LogWarning($"smoke vfx prefab name: {(dynamite.smokeVFXPrefab == null ? "null" : "nonnull")} {dynamite.smokeVFXPrefab?.name}");
 
             GlobalEvents.TriggerItemThrown(spawnedItem);
             ForceSyncForFrames(spawnedItem);
@@ -145,5 +163,19 @@ internal partial class Plugin : BaseUnityPlugin {
             component.GetComponent<PhotonView>().RPC("SetKinematicRPC", RpcTarget.AllBuffered, false, spawnedItem.transform.position, spawnedItem.transform.rotation);
             dynamite.LightFlare();
         });
+    }
+
+    /// <summary>
+    /// By default peak seems to spawn 13 cloud instances for explosions. This reduces this _drastically_ to just one. 
+    /// While it appears to not have much effect, besides making it a tad more see-through, it massively improves performance.
+    /// </summary>
+    [HarmonyPatch(typeof(ExplosionEffect), nameof(ExplosionEffect.GetPoints))]
+    private static class ReduceDynamiteCloudInstanceCount {
+        public static void Postfix(ExplosionEffect __instance) {
+            if (ReduceExplosionCloudDensity) {
+                __instance.explosionPoints = [__instance.explosionPoints[0]];
+                //DisableShadowsOnGameObject(__instance.explosionOrb);
+            }
+        }
     }
 }

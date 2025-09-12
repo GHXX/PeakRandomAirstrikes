@@ -2,8 +2,12 @@
 
 # PEAK Random Airstrikes
 
-Adds airstrikes to the game that target a random player!
+Adds periodic airstrikes to the game that target a random player each time!
 
-For the ultimate, mesa experience for the whole run.
+For the ultimate mesa experience during the whole run. PvPeak anyone?
 
-Still a quite early version, but fun nonetheless.
+Still quite an early version, but fun nonetheless.
+
+## HAS SIDE EFFECTS FOR PERFORMANCE REASONS (OPT-OUT)
+The vanilla dynamite explosion seems to be quite expensive in terms of rendering as the explosion cloud consists of 13 individual objects. 
+Therefore, the setting **Performance > ReduceExplosionCloudDensity** changes this to just 1 which massively improves performance but looks slightly worse. Simply set it to `false` if you prefer the vanilla behaviour. 
