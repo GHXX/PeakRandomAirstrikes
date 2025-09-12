@@ -25,12 +25,14 @@ internal partial class Plugin : BaseUnityPlugin {
     internal static ConfigEntry<float> AirstrikeDropDistanceCfg;
     internal static ConfigEntry<float> AirstrikeFuseDurationCfg;
     internal static ConfigEntry<bool> ReduceExplosionCloudDensityCfg;
+    internal static ConfigEntry<float> CampfireSafeZoneRadiusCfg;
     private float MeanSecondsBetweenStrikes => meanSecondsBetweenStrikesCfg.Value;
     private float RangeSecondsBetweenStrikes => rangeSecondsBetweenStrikesCfg.Value;
     private float QueueProcessFrameDelaySeconds => QueueProcessFrameDelaySecondsCfg.Value;
     private float GetNextStrikeDelay() => Random.Range(MeanSecondsBetweenStrikes - RangeSecondsBetweenStrikes, MeanSecondsBetweenStrikes + RangeSecondsBetweenStrikes);
     private float AirstrikeDropDistance => AirstrikeDropDistanceCfg.Value;
     private float AirstrikeFuseDuration => AirstrikeFuseDurationCfg.Value;
+    private float CampfireSafeZoneRadius => CampfireSafeZoneRadiusCfg.Value;
     private static bool ReduceExplosionCloudDensity => ReduceExplosionCloudDensityCfg.Value;
 
     internal void Awake() {
@@ -41,7 +43,8 @@ internal partial class Plugin : BaseUnityPlugin {
             "How much the drop delay may deviate from the mean (+/-), so the delay is somewhere between [MeanTime-Range, MeanTime+Range]; Min value: MeanTime");
 
         if (rangeSecondsBetweenStrikesCfg.Value > meanSecondsBetweenStrikesCfg.Value) { // enforce the minimum 
-            Logger.LogWarning($"TimeBetweenStrikesRangeInSeconds value of {rangeSecondsBetweenStrikesCfg.Value} is too large, setting it to MeanTimeBetweenStrikesInSeconds={meanSecondsBetweenStrikesCfg.Value}");
+            Logger.LogWarning($"TimeBetweenStrikesRangeInSeconds value of {rangeSecondsBetweenStrikesCfg.Value} is too large, " +
+                $"setting it to MeanTimeBetweenStrikesInSeconds={meanSecondsBetweenStrikesCfg.Value}");
             rangeSecondsBetweenStrikesCfg.Value = rangeSecondsBetweenStrikesCfg.Value;
         }
 
@@ -49,10 +52,13 @@ internal partial class Plugin : BaseUnityPlugin {
         QueueProcessFrameDelaySecondsCfg = Config.Bind("General", "DynamiteSpawnDelayInSeconds", 0.05f, "Delay between dynamite spawns");
         AirstrikeDropDistanceCfg = Config.Bind("General", "AirstrikeDropDistance", 2f, "Distance in meters between the individual pieces of dynamite in the drop-line");
         AirstrikeFuseDurationCfg = Config.Bind("General", "AirstrikeFuseDuration", 15f, "The fuse of the dynamite when it starts dropping");
+        CampfireSafeZoneRadiusCfg = Config.Bind("General", "CampfireSafeZoneRadius", 35f,
+            "Distance to the next unlit campfire which is considered a safe-zone, in which, players will not be targeted by airstrikes.");
 
         ReduceExplosionCloudDensityCfg = Config.Bind("Performance", "ReduceExplosionCloudDensity", true,
             "Decreases the amount of explosion cloud objects spawned (by PEAK) per explosion to 1 instead of 13. This affects ALL dynamite explosions but " +
             "massively helps performance. Set to 'false' for vanilla behaviour.");
+
 
         this.secondsTillNextDrop = MeanSecondsBetweenStrikes;
 
@@ -93,7 +99,7 @@ internal partial class Plugin : BaseUnityPlugin {
         }
 
         var progressHandler = Singleton<MountainProgressHandler>.Instance;
-        if (progressHandler == null || progressHandler.progressPoints.Single(x => x.biome == Biome.BiomeType.Peak).Reached) return;
+        if (progressHandler == null || progressHandler.progressPoints.Single(x => x.biome == Biome.BiomeType.Peak).Reached) return; // could replace with Maphandler check maybe
 
         this.secondsTillNextDrop -= dt;
         if (this.airstrikeTarget != null && (this.timeTillAirstrike -= dt) < 0) {
@@ -113,7 +119,13 @@ internal partial class Plugin : BaseUnityPlugin {
         if (this.secondsTillNextDrop > 0) { return; }
         this.secondsTillNextDrop = GetNextStrikeDelay();
 
-        var chars = Character.AllCharacters.Where(x => !x.data.dead).ToArray();
+        var mapHandler = Singleton<MapHandler>.Instance;
+        var currentMapSegment = mapHandler.segments[mapHandler.currentSegment];
+        var currentCampfire = currentMapSegment.segmentCampfire;
+        var chars = Character.AllCharacters
+            .Where(x => !x.data.dead && currentCampfire != null && Vector3.Distance(x.Center, currentCampfire.transform.position) > CampfireSafeZoneRadius)
+            .ToArray();
+
         if (chars.Length == 0) { return; }
         var targetChar = chars[Random.Range(0, chars.Length)];
         // IF HOST
