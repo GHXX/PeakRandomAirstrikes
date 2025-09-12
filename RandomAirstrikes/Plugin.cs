@@ -19,18 +19,36 @@ internal partial class Plugin : BaseUnityPlugin {
     public bool IsNetHost => PhotonNetwork.IsMasterClient;
 
     // fix an issue that causes people to break when the mod is uninstalled after beating an ascent higher than 7
-    internal static ConfigEntry<int> meanSecondsBetweenStrikesCfg;
+    internal static ConfigEntry<float> meanSecondsBetweenStrikesCfg;
+    internal static ConfigEntry<float> rangeSecondsBetweenStrikesCfg;
     internal static ConfigEntry<float> QueueProcessFrameDelaySecondsCfg;
-    private int SecondsBetweenStrikes => meanSecondsBetweenStrikesCfg.Value;
+    internal static ConfigEntry<float> AirstrikeDropDistanceCfg;
+    internal static ConfigEntry<float> AirstrikeFuseDurationCfg;
+    private float MeanSecondsBetweenStrikes => meanSecondsBetweenStrikesCfg.Value;
+    private float RangeSecondsBetweenStrikes => rangeSecondsBetweenStrikesCfg.Value;
     private float QueueProcessFrameDelaySeconds => QueueProcessFrameDelaySecondsCfg.Value;
+    private float GetNextStrikeDelay() => Random.Range(MeanSecondsBetweenStrikes - RangeSecondsBetweenStrikes, MeanSecondsBetweenStrikes + RangeSecondsBetweenStrikes);
+    private float AirstrikeDropDistance => AirstrikeDropDistanceCfg.Value;
+    private float AirstrikeFuseDuration => AirstrikeFuseDurationCfg.Value;
 
     internal void Awake() {
         Logger = base.Logger;
 
-        meanSecondsBetweenStrikesCfg = Config.Bind("General", "MeanTimeBetweenStrikesInSeconds", 15, "");
-        QueueProcessFrameDelaySecondsCfg = Config.Bind("General", "DynamiteSpawnDelayInSeconds", 0.05f, "");
+        meanSecondsBetweenStrikesCfg = Config.Bind("General", "MeanTimeBetweenStrikesInSeconds", 15f, "Time in seconds between strikes, on average");
+        rangeSecondsBetweenStrikesCfg = Config.Bind("General", "TimeBetweenStrikesRangeInSeconds", 10f,
+            "How much the drop delay may deviate from the mean (+/-), so the delay is somewhere between [MeanTime-Range, MeanTime+Range]; Min value: MeanTime");
 
-        this.secondsTillNextDrop = SecondsBetweenStrikes;
+        if (rangeSecondsBetweenStrikesCfg.Value > meanSecondsBetweenStrikesCfg.Value) { // enforce the minimum 
+            Logger.LogWarning($"TimeBetweenStrikesRangeInSeconds value of {rangeSecondsBetweenStrikesCfg.Value} is too large, setting it to MeanTimeBetweenStrikesInSeconds={meanSecondsBetweenStrikesCfg.Value}");
+            rangeSecondsBetweenStrikesCfg.Value = rangeSecondsBetweenStrikesCfg.Value;
+        }
+
+
+        QueueProcessFrameDelaySecondsCfg = Config.Bind("General", "DynamiteSpawnDelayInSeconds", 0.05f, "Delay between dynamite spawns");
+        AirstrikeDropDistanceCfg = Config.Bind("General", "AirstrikeDropDistance", 2f, "Distance in meters between the individual pieces of dynamite in the drop-line");
+        AirstrikeFuseDurationCfg = Config.Bind("General", "AirstrikeFuseDuration", 15f, "The fuse of the dynamite when it starts dropping");
+
+        this.secondsTillNextDrop = MeanSecondsBetweenStrikes;
 
         Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
         Harmony harmony = new(MyPluginInfo.PLUGIN_GUID);
@@ -53,7 +71,6 @@ internal partial class Plugin : BaseUnityPlugin {
     private Character airstrikeTarget = null;
     private float timeTillAirstrike = -1;
     private const float airstrikePlayerVelocityEstimationTime = 1;
-    private const float airstrikeDropDistance = 2;
 
     private Queue<Action> SpawnQueue = new();
     private float queueProcessCountdownSeconds = 0;
@@ -87,7 +104,7 @@ internal partial class Plugin : BaseUnityPlugin {
         }
 
         if (this.secondsTillNextDrop > 0) { return; }
-        this.secondsTillNextDrop = SecondsBetweenStrikes;
+        this.secondsTillNextDrop = GetNextStrikeDelay();
 
         var chars = Character.AllCharacters.Where(x => !x.data.dead).ToArray();
         if (chars.Length == 0) { return; }
@@ -105,7 +122,7 @@ internal partial class Plugin : BaseUnityPlugin {
 
     private void AirstrikeAtPlayerPosition(Vector3 playerPos, Vector3 planeFlightDirection) {
         for (int i = -1; i < 6; i++) {
-            DropLitDynamiteAtStartPosition(playerPos + planeFlightDirection * i * airstrikeDropDistance);
+            DropLitDynamiteAtStartPosition(playerPos + planeFlightDirection * i * AirstrikeDropDistance);
         }
     }
 
@@ -114,7 +131,7 @@ internal partial class Plugin : BaseUnityPlugin {
             GameObject component = PhotonNetwork.InstantiateItemRoom("Dynamite", pos, Quaternion.Euler(Vector3.up)); // +10 feels fine when dropped onto player
             Item spawnedItem = component.GetComponent<Item>();
             var dynamite = spawnedItem.GetComponentInParent<Dynamite>();
-            dynamite.startingFuseTime = 15;
+            dynamite.startingFuseTime = AirstrikeFuseDuration;
 
             GlobalEvents.TriggerItemThrown(spawnedItem);
             ForceSyncForFrames(spawnedItem);

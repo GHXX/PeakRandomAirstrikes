@@ -1,8 +1,9 @@
 # Changelog
 
 ## 0.0.5
-Stagger dynamite spawning
-Disable targeting dead players
+- Stagger dynamite spawning
+- Disable targeting dead players
+- Add config for airstrike drop distance, time-range between drops, airstrike fuse duration
 
 ## 0.0.4
 Cleaned up some logging
