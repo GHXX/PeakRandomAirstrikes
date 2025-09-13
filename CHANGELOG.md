@@ -2,6 +2,7 @@
 
 ## 0.0.7
 - Add CampfireSafeZoneRadius setting.
+- Add settings for configuring airstrike size.
 
 ## 0.0.6
 - Add opt-out setting for greatly improving performance of dynamite explosions.
