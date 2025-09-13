@@ -2,7 +2,8 @@
 
 # PEAK Random Airstrikes
 
-Adds periodic airstrikes to the game that target a random player each time!
+Adds periodic airstrikes to the game that target a random player each time! 
+Because *uuuuuuhhhh* Bing Bong Airways does not want to get sued for the plane crash.
 
 For the ultimate mesa experience during the whole run. PvPeak anyone?
 
