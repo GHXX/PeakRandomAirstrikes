@@ -1,25 +1,25 @@
 # Changelog
 
-## 0.0.9
+## 1.0.9
 - Add CampfirePostLitGracePeriodSeconds setting.
 
-## 0.0.7
+## 1.0.7
 - Add CampfireSafeZoneRadius setting.
 - Add settings for configuring airstrike size.
 
-## 0.0.6
+## 1.0.6
 - Add opt-out setting for greatly improving performance of dynamite explosions.
 
-## 0.0.5
+## 1.0.5
 - Stagger dynamite spawning.
 - Disable targeting dead players.
 - Add config for airstrike drop distance, time-range between drops, airstrike fuse duration.
 
-## 0.0.4
+## 1.0.4
 Cleaned up some logging.
 
-## 0.0.3
+## 1.0.3
 Dynamite no longer is spawned in the airport and while waking up at the beach.
 
-## 0.0.2
+## 1.0.2
 Initial version.
