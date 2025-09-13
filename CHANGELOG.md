@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.0.9
+- Add CampfirePostLitGracePeriodSeconds setting.
+
 ## 0.0.7
 - Add CampfireSafeZoneRadius setting.
 - Add settings for configuring airstrike size.

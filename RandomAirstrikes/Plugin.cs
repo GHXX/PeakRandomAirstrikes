@@ -31,6 +31,7 @@ internal partial class Plugin : BaseUnityPlugin {
     internal static ConfigEntry<float> AirstrikeFuseDurationCfg;
     internal static ConfigEntry<bool> ReduceExplosionCloudDensityCfg;
     internal static ConfigEntry<float> CampfireSafeZoneRadiusCfg;
+    internal static ConfigEntry<float> CampfirePostLitGracePeriodSecondsCfg;
     private float MeanSecondsBetweenStrikes => meanSecondsBetweenStrikesCfg.Value;
     private float RangeSecondsBetweenStrikes => rangeSecondsBetweenStrikesCfg.Value;
     private float QueueProcessFrameDelaySeconds => QueueProcessFrameDelaySecondsCfg.Value;
@@ -43,6 +44,7 @@ internal partial class Plugin : BaseUnityPlugin {
 
     private float AirstrikeFuseDuration => AirstrikeFuseDurationCfg.Value;
     private float CampfireSafeZoneRadius => CampfireSafeZoneRadiusCfg.Value;
+    private float CampfirePostLitGracePeriodSeconds => CampfirePostLitGracePeriodSecondsCfg.Value;
     private static bool ReduceExplosionCloudDensity => ReduceExplosionCloudDensityCfg.Value;
 
     internal void Awake() {
@@ -65,6 +67,7 @@ internal partial class Plugin : BaseUnityPlugin {
         AirstrikeFuseDurationCfg = Config.Bind("General", "AirstrikeFuseDuration", 15f, "The fuse of the dynamite when it starts dropping.");
         CampfireSafeZoneRadiusCfg = Config.Bind("General", "CampfireSafeZoneRadius", 35f,
             "Distance to the next unlit campfire which is considered a safe-zone, in which, players will not be targeted by airstrikes.");
+        CampfirePostLitGracePeriodSecondsCfg = Config.Bind("General", "CampfirePostLitGracePeriodSeconds", 15f, "After lighting a campfire, for this duration no airstrikes will be sent.");
         AirstrikeDynamiteCountPerLineCfg = Config.Bind("General", "AirstrikeDynamiteCountPerLine", 7u, "Number of dynamite pieces that a single airstrike line consists of.");
         AirstrikeDynamiteLineCountCfg = Config.Bind("General", "AirstrikeDynamiteLineCount", 1u, "Number of dynamite lines per airstrike.");
 
@@ -98,6 +101,7 @@ internal partial class Plugin : BaseUnityPlugin {
     private float timeTillAirstrike = -1;
     private const float airstrikePlayerVelocityEstimationTime = 1;
 
+    private Vector3? lastCampfirePos = null;
     private Queue<Action> SpawnQueue = new();
     private float queueProcessCountdownSeconds = 0;
     internal void Update() {
@@ -105,7 +109,12 @@ internal partial class Plugin : BaseUnityPlugin {
         var dt = Time.deltaTime;
 
         var charData = Character.localCharacter?.data;
-        if (charData == null || charData.passedOutOnTheBeach > 0) { this.SpawnQueue.Clear(); return; }
+        if (charData == null || charData.passedOutOnTheBeach > 0) {
+            this.SpawnQueue.Clear();
+            this.lastCampfirePos = null;
+            return;
+        }
+
         if (this.SpawnQueue.Count > 0 && (this.queueProcessCountdownSeconds -= dt) <= 0) {
             this.SpawnQueue.Dequeue().Invoke();
             this.queueProcessCountdownSeconds = QueueProcessFrameDelaySeconds;
@@ -135,13 +144,23 @@ internal partial class Plugin : BaseUnityPlugin {
         var mapHandler = Singleton<MapHandler>.Instance;
         var currentMapSegment = mapHandler.segments[mapHandler.currentSegment];
         var currentCampfire = currentMapSegment.segmentCampfire;
+        if (currentCampfire == null) { return; }
+        var currentCampfirePos = currentCampfire.transform.position;
+
+        if (this.lastCampfirePos == null) {
+            this.lastCampfirePos = currentCampfirePos;
+        } else if (Vector3.SqrMagnitude(currentCampfirePos - this.lastCampfirePos.Value) > 30 * 30f) { // if campfire moved by more than 30 units its definitely a new one
+            this.secondsTillNextDrop = CampfirePostLitGracePeriodSeconds;
+            lastCampfirePos = currentCampfirePos;
+            return;
+        }
+
         var chars = Character.AllCharacters
-            .Where(x => !x.data.dead && currentCampfire != null && Vector3.Distance(x.Center, currentCampfire.transform.position) > CampfireSafeZoneRadius)
+            .Where(x => !x.data.dead && currentCampfire != null && Vector3.Distance(x.Center, currentCampfirePos) > CampfireSafeZoneRadius)
             .ToArray();
 
         if (chars.Length == 0) { return; }
         var targetChar = chars[Random.Range(0, chars.Length)];
-        // IF HOST
 
         // prepare and then run airstrike
         if (this.airstrikeTarget == null) {
