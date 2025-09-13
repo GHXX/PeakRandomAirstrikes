@@ -23,6 +23,11 @@ internal partial class Plugin : BaseUnityPlugin {
     internal static ConfigEntry<float> rangeSecondsBetweenStrikesCfg;
     internal static ConfigEntry<float> QueueProcessFrameDelaySecondsCfg;
     internal static ConfigEntry<float> AirstrikeDropDistanceCfg;
+    internal static ConfigEntry<float> AirstrikeDropDistanceSidewaysCfg;
+
+    internal static ConfigEntry<uint> AirstrikeDynamiteCountPerLineCfg;
+    internal static ConfigEntry<uint> AirstrikeDynamiteLineCountCfg;
+
     internal static ConfigEntry<float> AirstrikeFuseDurationCfg;
     internal static ConfigEntry<bool> ReduceExplosionCloudDensityCfg;
     internal static ConfigEntry<float> CampfireSafeZoneRadiusCfg;
@@ -31,6 +36,11 @@ internal partial class Plugin : BaseUnityPlugin {
     private float QueueProcessFrameDelaySeconds => QueueProcessFrameDelaySecondsCfg.Value;
     private float GetNextStrikeDelay() => Random.Range(MeanSecondsBetweenStrikes - RangeSecondsBetweenStrikes, MeanSecondsBetweenStrikes + RangeSecondsBetweenStrikes);
     private float AirstrikeDropDistance => AirstrikeDropDistanceCfg.Value;
+    private float AirstrikeDropDistanceSideways => AirstrikeDropDistanceSidewaysCfg.Value;
+
+    private uint AirstrikeDynamiteCountPerLine => AirstrikeDynamiteCountPerLineCfg.Value;
+    private uint AirstrikeDynamiteLineCount => AirstrikeDynamiteLineCountCfg.Value;
+
     private float AirstrikeFuseDuration => AirstrikeFuseDurationCfg.Value;
     private float CampfireSafeZoneRadius => CampfireSafeZoneRadiusCfg.Value;
     private static bool ReduceExplosionCloudDensity => ReduceExplosionCloudDensityCfg.Value;
@@ -38,7 +48,7 @@ internal partial class Plugin : BaseUnityPlugin {
     internal void Awake() {
         Logger = base.Logger;
 
-        meanSecondsBetweenStrikesCfg = Config.Bind("General", "MeanTimeBetweenStrikesInSeconds", 15f, "Time in seconds between strikes, on average");
+        meanSecondsBetweenStrikesCfg = Config.Bind("General", "MeanTimeBetweenStrikesInSeconds", 15f, "Time in seconds between strikes, on average.");
         rangeSecondsBetweenStrikesCfg = Config.Bind("General", "TimeBetweenStrikesRangeInSeconds", 10f,
             "How much the drop delay may deviate from the mean (+/-), so the delay is somewhere between [MeanTime-Range, MeanTime+Range]; Min value: MeanTime");
 
@@ -49,11 +59,14 @@ internal partial class Plugin : BaseUnityPlugin {
         }
 
 
-        QueueProcessFrameDelaySecondsCfg = Config.Bind("General", "DynamiteSpawnDelayInSeconds", 0.05f, "Delay between dynamite spawns");
-        AirstrikeDropDistanceCfg = Config.Bind("General", "AirstrikeDropDistance", 2f, "Distance in meters between the individual pieces of dynamite in the drop-line");
-        AirstrikeFuseDurationCfg = Config.Bind("General", "AirstrikeFuseDuration", 15f, "The fuse of the dynamite when it starts dropping");
+        QueueProcessFrameDelaySecondsCfg = Config.Bind("General", "DynamiteSpawnDelayInSeconds", 0.05f, "Delay between dynamite spawns.");
+        AirstrikeDropDistanceCfg = Config.Bind("General", "AirstrikeDropDistance", 2f, "Distance in meters between the individual pieces of dynamite in the drop-line.");
+        AirstrikeDropDistanceSidewaysCfg = Config.Bind("General", "AirstrikeDropDistance", 2f, "Distance in meters between the individual lines of dynamite drops.");
+        AirstrikeFuseDurationCfg = Config.Bind("General", "AirstrikeFuseDuration", 15f, "The fuse of the dynamite when it starts dropping.");
         CampfireSafeZoneRadiusCfg = Config.Bind("General", "CampfireSafeZoneRadius", 35f,
             "Distance to the next unlit campfire which is considered a safe-zone, in which, players will not be targeted by airstrikes.");
+        AirstrikeDynamiteCountPerLineCfg = Config.Bind("General", "AirstrikeDynamiteCountPerLine", 7u, "Number of dynamite pieces that a single airstrike line consists of.");
+        AirstrikeDynamiteLineCountCfg = Config.Bind("General", "AirstrikeDynamiteLineCount", 1u, "Number of dynamite lines per airstrike.");
 
         ReduceExplosionCloudDensityCfg = Config.Bind("Performance", "ReduceExplosionCloudDensity", true,
             "Decreases the amount of explosion cloud objects spawned (by PEAK) per explosion to 1 instead of 13. This affects ALL dynamite explosions but " +
@@ -140,8 +153,12 @@ internal partial class Plugin : BaseUnityPlugin {
     }
 
     private void AirstrikeAtPlayerPosition(Vector3 playerPos, Vector3 planeFlightDirection) {
-        for (int i = -1; i < 6; i++) {
-            DropLitDynamiteAtStartPosition(playerPos + planeFlightDirection * i * AirstrikeDropDistance);
+        var normal = Vector3.Cross(Vector3.up, planeFlightDirection);
+        for (int i = 0; i < AirstrikeDynamiteCountPerLine; i++) {
+            var lineCenterOffset = (0 + AirstrikeDynamiteLineCount - 1) / 2f;
+            for (int j = 0; j < AirstrikeDynamiteLineCount; j++) {
+                DropLitDynamiteAtStartPosition(playerPos + planeFlightDirection * i * AirstrikeDropDistance + normal * (j - lineCenterOffset) * AirstrikeDropDistanceSideways);
+            }
         }
     }
 
