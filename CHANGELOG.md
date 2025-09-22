@@ -1,5 +1,7 @@
 # Changelog
 
+## 1.0.10
+- Fix caldera safezone not working.
 ## 1.0.9
 - Add CampfirePostLitGracePeriodSeconds setting.
 

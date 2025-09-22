@@ -145,7 +145,7 @@ internal partial class Plugin : BaseUnityPlugin {
         var currentMapSegment = mapHandler.segments[mapHandler.currentSegment];
         var currentCampfire = currentMapSegment.segmentCampfire;
         if (currentCampfire == null) { return; }
-        var currentCampfirePos = currentCampfire.transform.position;
+        var currentCampfirePos = currentCampfire.GetComponentsInChildren<MeshRenderer>().First(x => x.name == "Cube").transform.position; // caldera campfire is weird otherwise
 
         if (this.lastCampfirePos == null) {
             this.lastCampfirePos = currentCampfirePos;
