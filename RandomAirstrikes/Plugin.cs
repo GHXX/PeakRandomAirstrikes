@@ -121,8 +121,9 @@ internal partial class Plugin : BaseUnityPlugin {
         }
 
         var progressHandler = Singleton<MountainProgressHandler>.Instance;
-        if (progressHandler == null || progressHandler.progressPoints.Single(x => x.biome == Biome.BiomeType.Peak).Reached) return; // could replace with Maphandler check maybe
-
+        if (progressHandler == null || progressHandler.progressPoints.Single(x => x.biome == Biome.BiomeType.Peak).Reached) {
+            return; // could replace with Maphandler check maybe
+        }
         this.secondsTillNextDrop -= dt;
         if (this.airstrikeTarget != null && (this.timeTillAirstrike -= dt) < 0) {
             var currPos = this.airstrikeTarget.Center;
@@ -141,22 +142,31 @@ internal partial class Plugin : BaseUnityPlugin {
         if (this.secondsTillNextDrop > 0) { return; }
         this.secondsTillNextDrop = GetNextStrikeDelay();
 
+
         var mapHandler = Singleton<MapHandler>.Instance;
         var currentMapSegment = mapHandler.segments[mapHandler.currentSegment];
         var currentCampfire = currentMapSegment.segmentCampfire;
-        if (currentCampfire == null) { return; }
-        var currentCampfirePos = currentCampfire.GetComponentsInChildren<MeshRenderer>().First(x => x.name == "Cube").transform.position; // caldera campfire is weird otherwise
+        Vector3 currentCampfirePos = Vector3.zero;
+        if (currentCampfire == null) {  // if this is null, we are moving into the kiln currently, where there is no next campfire
+            if (this.lastCampfirePos != null) {
+                this.secondsTillNextDrop = CampfirePostLitGracePeriodSeconds;
+                this.lastCampfirePos = null;
+                return;
+            }
+        } else {
+            currentCampfirePos = currentCampfire.GetComponentsInChildren<MeshRenderer>().First(x => x.name == "Cube").transform.position; // caldera campfire is weird otherwise
 
-        if (this.lastCampfirePos == null) {
-            this.lastCampfirePos = currentCampfirePos;
-        } else if (Vector3.SqrMagnitude(currentCampfirePos - this.lastCampfirePos.Value) > 30 * 30f) { // if campfire moved by more than 30 units its definitely a new one
-            this.secondsTillNextDrop = CampfirePostLitGracePeriodSeconds;
-            lastCampfirePos = currentCampfirePos;
-            return;
+            if (this.lastCampfirePos == null) {
+                this.lastCampfirePos = currentCampfirePos;
+            } else if (Vector3.SqrMagnitude(currentCampfirePos - this.lastCampfirePos.Value) > 30 * 30f) { // if campfire moved by more than 30 units its definitely a new one
+                this.secondsTillNextDrop = CampfirePostLitGracePeriodSeconds;
+                this.lastCampfirePos = currentCampfirePos;
+                return;
+            }
         }
 
         var chars = Character.AllCharacters
-            .Where(x => !x.data.dead && currentCampfire != null && Vector3.Distance(x.Center, currentCampfirePos) > CampfireSafeZoneRadius)
+            .Where(x => !x.data.dead && (currentCampfire == null || Vector3.Distance(x.Center, currentCampfirePos) > CampfireSafeZoneRadius))
             .ToArray();
 
         if (chars.Length == 0) { return; }

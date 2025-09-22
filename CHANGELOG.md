@@ -2,6 +2,8 @@
 
 ## 1.0.10
 - Fix caldera safezone not working.
+- Fix airstrikes not working in Kiln.
+
 ## 1.0.9
 - Add CampfirePostLitGracePeriodSeconds setting.
 
