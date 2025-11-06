@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.11
+- Recompile for new PEAK biome update.
+
 ## 1.0.10
 - Fix caldera safezone not working.
 - Fix airstrikes not working in Kiln.

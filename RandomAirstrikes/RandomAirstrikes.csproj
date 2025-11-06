@@ -1,11 +1,11 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net471</TargetFramework>
 	
 	<AssemblyTitle>RandomAirstrikes</AssemblyTitle>
     <AssemblyName>RandomAirstrikes</AssemblyName>
-    <Version>1.0.10</Version>
+    <Version>1.0.11</Version>
 	
     <Product>RandomAirstrikes</Product>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
