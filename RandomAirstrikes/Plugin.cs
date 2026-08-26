@@ -18,7 +18,6 @@ internal partial class Plugin : BaseUnityPlugin {
     internal static new ManualLogSource Logger;
     public bool IsNetHost => PhotonNetwork.IsMasterClient;
 
-    // fix an issue that causes people to break when the mod is uninstalled after beating an ascent higher than 7
     internal static ConfigEntry<float> meanSecondsBetweenStrikesCfg;
     internal static ConfigEntry<float> rangeSecondsBetweenStrikesCfg;
     internal static ConfigEntry<float> QueueProcessFrameDelaySecondsCfg;
@@ -104,6 +103,7 @@ internal partial class Plugin : BaseUnityPlugin {
     private Vector3? lastCampfirePos = null;
     private Queue<Action> SpawnQueue = new();
     private float queueProcessCountdownSeconds = 0;
+    private bool nadirClimbStrikeCooldownStarted = false;
     internal void Update() {
         if (!IsNetHost) return;
         var dt = Time.deltaTime;
@@ -112,6 +112,8 @@ internal partial class Plugin : BaseUnityPlugin {
         if (charData == null || charData.passedOutOnTheBeach > 0) {
             this.SpawnQueue.Clear();
             this.lastCampfirePos = null;
+            this.secondsTillNextDrop = 10;
+            nadirClimbStrikeCooldownStarted = false;
             return;
         }
 
@@ -120,10 +122,20 @@ internal partial class Plugin : BaseUnityPlugin {
             this.queueProcessCountdownSeconds = QueueProcessFrameDelaySeconds;
         }
 
-        var progressHandler = Singleton<MountainProgressHandler>.Instance;
-        if (progressHandler == null || progressHandler.progressPoints.Single(x => x.biome == Biome.BiomeType.Peak).Reached) {
-            return; // could replace with Maphandler check maybe
+        var mapHandler = Singleton<MapHandler>.Instance;
+        var mountainProgressHandler = Singleton<MountainProgressHandler>.Instance;
+        if (mapHandler.inNadir && !nadirClimbStrikeCooldownStarted) {
+            nadirClimbStrikeCooldownStarted = true;
+            secondsTillNextDrop = 45;
         }
+            
+
+        var peakWasReachedInCurrentRun = mountainProgressHandler.CheckReached(mountainProgressHandler.progressPoints.Single(x => x.biome == Biome.BiomeType.Peak));
+        if (mapHandler == null || peakWasReachedInCurrentRun && !mapHandler.inNadir) {
+            return; // no airstrikes at the peak, but continue when we are in nadir
+        }
+        if (PeakHandler.Instance.isPlayingCinematic) return;
+        
         this.secondsTillNextDrop -= dt;
         if (this.airstrikeTarget != null && (this.timeTillAirstrike -= dt) < 0) {
             var currPos = this.airstrikeTarget.Center;
@@ -143,25 +155,29 @@ internal partial class Plugin : BaseUnityPlugin {
         this.secondsTillNextDrop = GetNextStrikeDelay();
 
 
-        var mapHandler = Singleton<MapHandler>.Instance;
         var currentMapSegment = mapHandler.segments[mapHandler.currentSegment];
         var currentCampfire = currentMapSegment.segmentCampfire;
         Vector3 currentCampfirePos = Vector3.zero;
         if (currentCampfire == null) {  // if this is null, we are moving into the kiln currently, where there is no next campfire
             if (this.lastCampfirePos != null) {
                 this.secondsTillNextDrop = CampfirePostLitGracePeriodSeconds;
+                Logger.LogWarning($"campfire has changed but there is no next one, starting grace period of {CampfirePostLitGracePeriodSeconds} seconds");
                 this.lastCampfirePos = null;
                 return;
             }
         } else {
-            currentCampfirePos = currentCampfire.GetComponentsInChildren<MeshRenderer>().First(x => x.name == "Cube").transform.position; // caldera campfire is weird otherwise
+            currentCampfirePos = currentCampfire.GetComponentsInChildren<MeshRenderer>().FirstOrDefault(x=>x.name == "Cube" || x.name == "Pyre").transform.position;
 
             if (this.lastCampfirePos == null) {
                 this.lastCampfirePos = currentCampfirePos;
-            } else if (Vector3.SqrMagnitude(currentCampfirePos - this.lastCampfirePos.Value) > 30 * 30f) { // if campfire moved by more than 30 units its definitely a new one
-                this.secondsTillNextDrop = CampfirePostLitGracePeriodSeconds;
-                this.lastCampfirePos = currentCampfirePos;
-                return;
+            } else {
+                Logger.LogWarning($"current distance to campfire: {Vector3.Magnitude(currentCampfirePos - this.lastCampfirePos.Value)}");
+                if (Vector3.SqrMagnitude(currentCampfirePos - this.lastCampfirePos.Value) > 30 * 30f) { // if campfire moved by more than 30 units its definitely a new one
+                    Logger.LogWarning($"campfire has moved, starting grace period of {CampfirePostLitGracePeriodSeconds} seconds");
+                    this.secondsTillNextDrop = CampfirePostLitGracePeriodSeconds;
+                    this.lastCampfirePos = currentCampfirePos;
+                    return;
+                }
             }
         }
 
