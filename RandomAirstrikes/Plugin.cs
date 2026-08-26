@@ -171,7 +171,6 @@ internal partial class Plugin : BaseUnityPlugin {
             if (this.lastCampfirePos == null) {
                 this.lastCampfirePos = currentCampfirePos;
             } else {
-                Logger.LogWarning($"current distance to campfire: {Vector3.Magnitude(currentCampfirePos - this.lastCampfirePos.Value)}");
                 if (Vector3.SqrMagnitude(currentCampfirePos - this.lastCampfirePos.Value) > 30 * 30f) { // if campfire moved by more than 30 units its definitely a new one
                     Logger.LogWarning($"campfire has moved, starting grace period of {CampfirePostLitGracePeriodSeconds} seconds");
                     this.secondsTillNextDrop = CampfirePostLitGracePeriodSeconds;
