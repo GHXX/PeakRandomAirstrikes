@@ -75,7 +75,7 @@ internal partial class Plugin : BaseUnityPlugin {
             "massively helps performance. Set to 'false' for vanilla behaviour.");
 
 
-        this.secondsTillNextDrop = MeanSecondsBetweenStrikes;
+        secondsTillNextDrop = MeanSecondsBetweenStrikes;
 
         Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
 
@@ -110,16 +110,16 @@ internal partial class Plugin : BaseUnityPlugin {
 
         var charData = Character.localCharacter?.data;
         if (charData == null || charData.passedOutOnTheBeach > 0) {
-            this.SpawnQueue.Clear();
-            this.lastCampfirePos = null;
-            this.secondsTillNextDrop = 10;
+            SpawnQueue.Clear();
+            lastCampfirePos = null;
+            secondsTillNextDrop = 10;
             nadirClimbStrikeCooldownStarted = false;
             return;
         }
 
-        if (this.SpawnQueue.Count > 0 && (this.queueProcessCountdownSeconds -= dt) <= 0) {
-            this.SpawnQueue.Dequeue().Invoke();
-            this.queueProcessCountdownSeconds = QueueProcessFrameDelaySeconds;
+        if (SpawnQueue.Count > 0 && (queueProcessCountdownSeconds -= dt) <= 0) {
+            SpawnQueue.Dequeue().Invoke();
+            queueProcessCountdownSeconds = QueueProcessFrameDelaySeconds;
         }
 
         var mapHandler = Singleton<MapHandler>.Instance;
@@ -128,18 +128,18 @@ internal partial class Plugin : BaseUnityPlugin {
             nadirClimbStrikeCooldownStarted = true;
             secondsTillNextDrop = 45;
         }
-            
+
 
         var peakWasReachedInCurrentRun = mountainProgressHandler.CheckReached(mountainProgressHandler.progressPoints.Single(x => x.biome == Biome.BiomeType.Peak));
         if (mapHandler == null || peakWasReachedInCurrentRun && !mapHandler.inNadir) {
             return; // no airstrikes at the peak, but continue when we are in nadir
         }
         if (PeakHandler.Instance.isPlayingCinematic) return;
-        
-        this.secondsTillNextDrop -= dt;
-        if (this.airstrikeTarget != null && (this.timeTillAirstrike -= dt) < 0) {
-            var currPos = this.airstrikeTarget.Center;
-            Vector3 playerVelocity = (currPos - this.lastPos) / airstrikePlayerVelocityEstimationTime;
+
+        secondsTillNextDrop -= dt;
+        if (airstrikeTarget != null && (timeTillAirstrike -= dt) < 0) {
+            var currPos = airstrikeTarget.Center;
+            Vector3 playerVelocity = (currPos - lastPos) / airstrikePlayerVelocityEstimationTime;
             playerVelocity.y = 0;
             var playerDirection = Vector3.zero;
             if (playerVelocity.sqrMagnitude > 0.01) {
@@ -148,33 +148,33 @@ internal partial class Plugin : BaseUnityPlugin {
             //Logger.LogWarning($"Current biome: {progressHandler.progressPoints[progressHandler.maxProgressPointReached].biome.ToString()}");
             AirstrikeAtPlayerPosition(currPos + playerVelocity + Vector3.up * 20, playerDirection);
 
-            this.airstrikeTarget = null;
+            airstrikeTarget = null;
         }
 
-        if (this.secondsTillNextDrop > 0) { return; }
-        this.secondsTillNextDrop = GetNextStrikeDelay();
+        if (secondsTillNextDrop > 0) { return; }
+        secondsTillNextDrop = GetNextStrikeDelay();
 
 
         var currentMapSegment = mapHandler.segments[mapHandler.currentSegment];
         var currentCampfire = currentMapSegment.segmentCampfire;
         Vector3 currentCampfirePos = Vector3.zero;
         if (currentCampfire == null) {  // if this is null, we are moving into the kiln currently, where there is no next campfire
-            if (this.lastCampfirePos != null) {
-                this.secondsTillNextDrop = CampfirePostLitGracePeriodSeconds;
+            if (lastCampfirePos != null) {
+                secondsTillNextDrop = CampfirePostLitGracePeriodSeconds;
                 Logger.LogWarning($"campfire has changed but there is no next one, starting grace period of {CampfirePostLitGracePeriodSeconds} seconds");
-                this.lastCampfirePos = null;
+                lastCampfirePos = null;
                 return;
             }
         } else {
-            currentCampfirePos = currentCampfire.GetComponentsInChildren<MeshRenderer>().FirstOrDefault(x=>x.name == "Cube" || x.name == "Pyre").transform.position;
+            currentCampfirePos = currentCampfire.GetComponentsInChildren<MeshRenderer>().FirstOrDefault(x => x.name == "Cube" || x.name == "Pyre").transform.position;
 
-            if (this.lastCampfirePos == null) {
-                this.lastCampfirePos = currentCampfirePos;
+            if (lastCampfirePos == null) {
+                lastCampfirePos = currentCampfirePos;
             } else {
-                if (Vector3.SqrMagnitude(currentCampfirePos - this.lastCampfirePos.Value) > 30 * 30f) { // if campfire moved by more than 30 units its definitely a new one
+                if (Vector3.SqrMagnitude(currentCampfirePos - lastCampfirePos.Value) > 30 * 30f) { // if campfire moved by more than 30 units its definitely a new one
                     Logger.LogWarning($"campfire has moved, starting grace period of {CampfirePostLitGracePeriodSeconds} seconds");
-                    this.secondsTillNextDrop = CampfirePostLitGracePeriodSeconds;
-                    this.lastCampfirePos = currentCampfirePos;
+                    secondsTillNextDrop = CampfirePostLitGracePeriodSeconds;
+                    lastCampfirePos = currentCampfirePos;
                     return;
                 }
             }
@@ -188,10 +188,10 @@ internal partial class Plugin : BaseUnityPlugin {
         var targetChar = chars[Random.Range(0, chars.Length)];
 
         // prepare and then run airstrike
-        if (this.airstrikeTarget == null) {
-            this.timeTillAirstrike = airstrikePlayerVelocityEstimationTime;
-            this.lastPos = targetChar.Center;
-            this.airstrikeTarget = targetChar;
+        if (airstrikeTarget == null) {
+            timeTillAirstrike = airstrikePlayerVelocityEstimationTime;
+            lastPos = targetChar.Center;
+            airstrikeTarget = targetChar;
         }
 
     }
@@ -214,7 +214,7 @@ internal partial class Plugin : BaseUnityPlugin {
     }
 
     private void DropLitDynamiteAtStartPosition(Vector3 pos) {
-        this.SpawnQueue.Enqueue(() => {
+        SpawnQueue.Enqueue(() => {
             GameObject component = PhotonNetwork.InstantiateItemRoom("Dynamite", pos, Quaternion.Euler(Vector3.up)); // +10 feels fine when dropped onto player
             DisableShadowsOnGameObject(component);
             Item spawnedItem = component.GetComponent<Item>();
