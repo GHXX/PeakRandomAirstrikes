@@ -31,6 +31,8 @@ internal partial class Plugin : BaseUnityPlugin {
     internal static ConfigEntry<bool> ReduceExplosionCloudDensityCfg;
     internal static ConfigEntry<float> CampfireSafeZoneRadiusCfg;
     internal static ConfigEntry<float> CampfirePostLitGracePeriodSecondsCfg;
+
+    internal static ConfigEntry<bool> SlowDownFuseOfDynamiteInBackpackCfg;
     private float MeanSecondsBetweenStrikes => meanSecondsBetweenStrikesCfg.Value;
     private float RangeSecondsBetweenStrikes => rangeSecondsBetweenStrikesCfg.Value;
     private float QueueProcessFrameDelaySeconds => QueueProcessFrameDelaySecondsCfg.Value;
@@ -45,6 +47,7 @@ internal partial class Plugin : BaseUnityPlugin {
     private float CampfireSafeZoneRadius => CampfireSafeZoneRadiusCfg.Value;
     private float CampfirePostLitGracePeriodSeconds => CampfirePostLitGracePeriodSecondsCfg.Value;
     private static bool ReduceExplosionCloudDensity => ReduceExplosionCloudDensityCfg.Value;
+    private static bool SlowDownFuseOfDynamiteInBackpack => SlowDownFuseOfDynamiteInBackpackCfg.Value;
 
     internal void Awake() {
         Logger = base.Logger;
@@ -73,6 +76,10 @@ internal partial class Plugin : BaseUnityPlugin {
         ReduceExplosionCloudDensityCfg = Config.Bind("Performance", "ReduceExplosionCloudDensity", true,
             "Decreases the amount of explosion cloud objects spawned (by PEAK) per explosion to 1 instead of 13. This affects ALL dynamite explosions but " +
             "massively helps performance. Set to 'false' for vanilla behaviour.");
+
+        SlowDownFuseOfDynamiteInBackpackCfg = Config.Bind("General", "SlowDownFuseOfDynamiteInBackpack", true,
+            "Massively decreases the speed at which the dynamite fuse burns up if it is inside some backpack. " +
+            "In default settings the time to explode is 5 minutes, but in reality it will be less as part of the fuse is already used up before it is put into the backpack.");
 
 
         secondsTillNextDrop = MeanSecondsBetweenStrikes;
@@ -252,6 +259,18 @@ internal partial class Plugin : BaseUnityPlugin {
             if (ReduceExplosionCloudDensity) {
                 __instance.explosionPoints = [__instance.explosionPoints[0]];
                 //DisableShadowsOnGameObject(__instance.explosionOrb);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(Dynamite), nameof(Dynamite.Update))]
+    private static class SlowDownFuseInBackpacks {
+        public static void Prefix(Dynamite __instance) {
+            if (SlowDownFuseOfDynamiteInBackpack) {
+                if (__instance.item.itemState == ItemState.InBackpack) {
+                    __instance.fuseTime += Time.deltaTime * (1 - 1/20f);
+                    __instance.GetData(DataEntryKey.Fuel,  __instance.SetupDefaultFuel).Value = __instance.fuseTime;
+                }
             }
         }
     }
