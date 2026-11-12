@@ -124,6 +124,10 @@ internal partial class Plugin : BaseUnityPlugin {
 
         var mapHandler = Singleton<MapHandler>.Instance;
         var mountainProgressHandler = Singleton<MountainProgressHandler>.Instance;
+        if (mapHandler == null || mountainProgressHandler == null) {
+            return;
+        }
+
         if (mapHandler.inNadir && !nadirClimbStrikeCooldownStarted) {
             nadirClimbStrikeCooldownStarted = true;
             secondsTillNextDrop = 45;
