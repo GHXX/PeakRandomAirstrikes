@@ -7,9 +7,9 @@ Because *uuuuuuhhhh* Bing Bong Airways does not want to get sued for the plane c
 
 For the ultimate mesa experience during the whole run. PvPeak anyone?
 
-Still quite an early version, but fun nonetheless.
+Offers many config options for tweaking how the airstrikes behave.
 
-Also offers many config options for tweaking how the airstrikes behave.
+NEW: Now also massively slows down dynamite fuse in backpacks, in case you want to bring some dynamite with you.
 
 ## HAS SIDE EFFECTS FOR PERFORMANCE REASONS (OPT-OUT)
 The vanilla dynamite explosion seems to be quite expensive in terms of rendering as the explosion cloud consists of 13 individual objects. 
